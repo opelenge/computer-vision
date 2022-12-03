@@ -102,8 +102,8 @@ class StickerDetection:
 
         matrix = cv2.getPerspectiveTransform(pts1, pts2)      
         transformed_frame = cv2.warpPerspective(frame, matrix, (640, 480))
-        cv2.imshow('whiteboard_mode', transformed_frame)    
-
+        cv2.imshow('whiteboard_mode', transformed_frame)  
+  
 
     def coordinates(self, results, frame, pts):
         labels, cord = results
@@ -123,37 +123,26 @@ class StickerDetection:
         global labl
         global lablu
         if labeled == 'TL-stickers':
-            pts[0] = [x_centre , y_centre]
+            pts[0] = [10, y_centre]
             labl = [('TL-stickers' if ('q' in str)else str) for str in labl]
-        elif labeled == 'BL-stickers':
-            pts[1] = [x_centre , y_centre] 
+        if labeled == 'BL-stickers':
+            pts[1] = [10 , y_centre] 
             labl = [('BL-stickers' if ('j' in str)else str) for str in labl]
-        elif labeled == 'TR-stickers':
-            pts[2] = [x_centre , y_centre]
+        if labeled == 'TR-stickers':
+            pts[2] = [630, y_centre]
             labl = [('TR-stickers' if ('p' in str)else str) for str in labl]    
-        elif labeled == 'BR-stickers':
-            pts[3] = [x_centre , y_centre]
+        if labeled == 'BR-stickers':
+            pts[3] = [630 , y_centre]
             labl = [('BR-stickers' if ('f' in str)else str) for str in labl]
         print(labl)
-        print(pts)   
+        print(pts)  
 
-        correct = True
+       
         
+        if labl == lablu:
+      
+            self.whiteboard_mode(frame, pts)
 
-        while correct:
-                    
-            #labeled.sort()
-            #labl.sort()
-
-            if labl == lablu:
-                correct = True
-                self.whiteboard_mode(frame, pts)
-            else:
-                correct = False
-
-
-
-            
 
         return pts     
         
