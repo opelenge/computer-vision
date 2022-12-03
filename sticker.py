@@ -15,7 +15,7 @@ lablu = ['TL-stickers', 'BL-stickers', 'TR-stickers', 'BR-stickers']
 labeled = ()
 class StickerDetection:
     """
-    Class implements Yolo5 model to make inferences on a youtube video using Opencv2.
+    Class implements Yolo5 model to make inferences on the video using Opencv2.
     """
 
     def __init__(self, capture_index, model_name):
@@ -96,6 +96,9 @@ class StickerDetection:
         return frame
 
     def whiteboard_mode(self, frame, pts):
+        """
+        Takes a frame and the points of the detected stickers which it then passes into a fuction to return the whiteboard
+        """
             
         pts1 = np.float32(pts)
         pts2 = np.float32([[0,0] , [0,480] , [640,0] , [640,480]])
@@ -106,6 +109,14 @@ class StickerDetection:
   
 
     def coordinates(self, results, frame, pts):
+
+        """
+
+        Function assigns every coordinates detected with the corresponding sticker label
+        which can passed into a list to get the points that are useful
+        
+        """
+
         labels, cord = results
         n = len(labels)
         x_shape, y_shape = frame.shape[1], frame.shape[0]  
