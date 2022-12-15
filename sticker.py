@@ -86,12 +86,12 @@ class StickerDetection:
             if row[4] >= 0.2:
                 x1, y1, x2, y2 = int(row[0]*x_shape), int(row[1]*y_shape), int(row[2]*x_shape), int(row[3]*y_shape)
                 bgr = (0, 255, 0)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), bgr, 2)
+                #cv2.rectangle(frame, (x1, y1), (x2, y2), bgr, 2)
                 x_centre, y_centre = int((x1 + x2)/2), int((y1 + y2)/2)
-                cv2.circle(frame, (x_centre, y_centre), 5, bgr, -1 )
+                #cv2.circle(frame, (x_centre, y_centre), 5, bgr, -1 )
                 
                 
-                cv2.putText(frame, self.class_to_label(labels[i]), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.9, bgr, 2)
+                #cv2.putText(frame, self.class_to_label(labels[i]), (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.9, bgr, 2)
               
         return frame
 
@@ -114,7 +114,7 @@ class StickerDetection:
 
         Function assigns every coordinates detected with the corresponding sticker label
         which can passed into a list to get the points that are useful
-        
+
         """
 
         labels, cord = results
