@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as Patches
 import math
 from scipy.spatial import ConvexHull
+from skimage.draw import polygon
 
 #this function resizes the image
 def rescaleFrame(frame, scale = 0.75):
@@ -26,7 +27,7 @@ def draw_graph(point):
     plt.show()
 
 
-def find_corners(coords, n_corners_range=(3, 4), threshold=100):
+def find_corners(coords, n_corners_range=(3, 4), threshold=20):
     hull = ConvexHull(coords)
     corners = hull.points[hull.vertices]
     centroid = np.mean(corners, axis=0)
@@ -39,6 +40,35 @@ def find_corners(coords, n_corners_range=(3, 4), threshold=100):
         if len(unique_corners) >= n_corners_range[0]:
             break
     return np.array(unique_corners[:n_corners_range[1]])
+
+def split_polygon(coords, corners):
+    divided_polygons = []
+    for i in range(len(corners)):
+        start = corners[i]
+        end = corners[(i + 1) % len(corners)]
+        line_segment = np.array([start, end])
+        divided_polygon = []
+        for coord in coords:
+            if is_point_on_line(coord, line_segment[0], line_segment[1]):
+                divided_polygon.append(coord)
+        divided_polygons.append(np.array(divided_polygon))
+    return divided_polygons
+
+def is_point_on_line(point, line_start, line_end, epsilon=10):
+    x, y = point
+    x1, y1 = line_start
+    x2, y2 = line_end
+    if x < min(x1, x2) - epsilon or x > max(x1, x2) + epsilon:
+        return False
+    if y < min(y1, y2) - epsilon or y > max(y1, y2) + epsilon:
+        return False
+    if x1 == x2:
+        return abs(x - x1) < epsilon
+    if y1 == y2:
+        return abs(y - y1) < epsilon
+    slope = (y2 - y1) / (x2 - x1)
+    y_intercept = y1 - slope * x1
+    return abs(y - slope * x - y_intercept) < epsilon
 
 images = os.path.join(r"C:\Users\OPE\Documents\Visual Studio 2008\computer vision\thepics.jpg")
 img = cv.imread(images)
@@ -74,7 +104,9 @@ for coord in points:
     yl.append(coord[1])
 
 coords = np.array(points)
-print(find_corners(coords))
+coord = find_corners(coords)
+print(split_polygon(coords, coord))
+
 
 draw_graph(points)
 cv.imshow('download', img_resize)
