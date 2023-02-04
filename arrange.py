@@ -27,7 +27,7 @@ def draw_graph(point):
     plt.show()
 
 
-def find_corners(coords, n_corners_range=(3, 4), threshold=20):
+def find_corners(coords, n_corners_range=(4, 4), threshold=20):
     hull = ConvexHull(coords)
     corners = hull.points[hull.vertices]
     centroid = np.mean(corners, axis=0)
@@ -70,47 +70,128 @@ def is_point_on_line(point, line_start, line_end, epsilon=10):
     y_intercept = y1 - slope * x1
     return abs(y - slope * x - y_intercept) < epsilon
 
-images = os.path.join(r"C:\Users\OPE\Documents\Visual Studio 2008\computer vision\thepics.jpg")
-img = cv.imread(images)
-img_resize = rescaleFrame(img, scale = .15)
+def compare_sides(side1, side2, angle_threshold=10, length_ratio_threshold=0.1, curvature_threshold=0.1):
+    # Calculate the angle between the two sides
+    angle = np.arccos(np.dot(side1, side2) / (np.linalg.norm(side1) * np.linalg.norm(side2)))
+    
+    # Calculate the length ratio between the two sides
+    length_ratio = np.linalg.norm(side1) / np.linalg.norm(side2)
+    
+    # Calculate the curvature of the two sides
+    curvature1 = np.abs(np.polyfit(side1[:,0], side1[:,1], 2)[0])
+    curvature2 = np.abs(np.polyfit(side2[:,0], side2[:,1], 2)[0])
+    curvature_ratio = curvature1 / curvature2
+    
+    # Check if the sides match by comparing the angle, length ratio, and curvature
+    if (np.abs(angle) < angle_threshold) and (np.abs(length_ratio - 1) < length_ratio_threshold) and (np.abs(curvature_ratio - 1) < curvature_threshold):
+        return True
+    else:
+        return False
 
-edge_pixel = []
-piece = []
-background = []
-points = []
+def get_side_properties(side):
+    # Calculate length ratio, angle, and curvature for a side
+    length_ratio = np.linalg.norm(side)
+    curvature = np.abs(np.polyfit(side[:,0], side[:,1], 2)[0])
+    return length_ratio, curvature
 
-xl = []
-yl = []
-rerr = []
+def compare_sides(side1, side2):
+    # Compare two sides based on length ratio, angle, and curvature
+    length_ratio1, curvature1 = get_side_properties(side1)
+    length_ratio2, curvature2 = get_side_properties(side2)
+    #angle = np.arccos(np.dot(side1, side2) / (np.linalg.norm(side1) * np.linalg.norm(side2)))
+    length_ratio = length_ratio1 / length_ratio2
+    curvature_ratio = curvature1 / curvature2
 
-for i in range (img_resize.shape[0]):
-    for j in range(img_resize.shape[1]):
-        numbers = img_resize[i][j]
-        if any(numbers < 197):
-            background.append(numbers)
-            #numbers[0], numbers[1], numbers[2] = [0, 0, 0]
-        if all(numbers > 197):
-            piece.append(numbers)
-            coordinates = [i, j] 
-            #numbers[0], numbers[1], numbers[2] = [255, 255, 255]  
-            
-            if any(img_resize[i][j - 1] < 197) or any(img_resize[i][j + 1] < 197) or any(img_resize[i - 1][j] < 197) or any(img_resize[i + 1][j] < 197):
-                edge_pixel.append(img_resize[i][j])  
-                pts = np.array([coordinates])
-                points.append(coordinates)
+    # Define a threshold for each property to determine a match
+    length_ratio_threshold = 0.1
+    angle_threshold = 10
+    curvature_threshold = 0.1
 
-for coord in points:
-    xl.append(coord[0])
-    yl.append(coord[1])
+    if (np.abs(curvature_ratio - 1) < curvature_threshold) and abs(length_ratio1 - length_ratio2) < length_ratio_threshold:
+        return True
+    else:
+        return False
 
-coords = np.array(points)
-coord = find_corners(coords)
-print(split_polygon(coords, coord))
+def find_matches(side_list):
+    # Find matches in a list of sides
+    matches = []
+    while len(side_list) > 0:
+        current_side = side_list.pop()
+        current_matches = []
+        for i, side in enumerate(side_list):
+            print(current_side)
+            #print(side)
+            if compare_sides(current_side, side):
+                current_matches.append(side)
+                side_list.pop(i)
+                i -= 1
+        if len(current_matches) > 0:
+            matches.append((current_side, current_matches))
+    print(matches)        
+    return matches
+    
 
 
-draw_graph(points)
-cv.imshow('download', img_resize)
-cv.waitKey(0) 
-cv.destroyAllWindows()
+os.chdir("C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers")
+images = "C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers"
+k = len(os.listdir(images))
+i = 0
+all_sides = []
+while i < k:
+    for image in os.listdir(images):
+        if image.endswith(".jpg") or image.endswith(".png"):
+            img = cv.imread(image)
+            img_resize = rescaleFrame(img, scale = .15)
 
+            edge_pixel = []
+            piece = []
+            background = []
+            points = []
 
+            xl = []
+            yl = []
+            rerr = []
+            pixel_value = 100
+            for i in range (img_resize.shape[0]):
+                for j in range(img_resize.shape[1]):
+                    numbers = img_resize[i][j]
+                    if any(numbers < pixel_value):
+                        background.append(numbers)
+                        #numbers[0], numbers[1], numbers[2] = [0, 0, 0]
+                    if all(numbers > pixel_value):
+                        piece.append(numbers)
+                        coordinates = [i, j] 
+                        #numbers[0], numbers[1], numbers[2] = [255, 255, 255]  
+                        
+                        if any(img_resize[i][j - 1] < pixel_value) or any(img_resize[i][j + 1] < pixel_value) or any(img_resize[i - 1][j] < pixel_value) or any(img_resize[i + 1][j] < pixel_value):
+                            edge_pixel.append(img_resize[i][j])  
+                            pts = np.array([coordinates])
+                            points.append(coordinates)
+
+            for coord in points:
+                xl.append(coord[0])
+                yl.append(coord[1])
+
+            coords = np.array(points)
+            coord = find_corners(coords)
+            sides = split_polygon(coords, coord)
+            all_sides.append(sides)
+            print(sides)
+            draw_graph(points)
+            #cv.imshow('download', img_resize)
+            i += 1
+            cv.waitKey(0) 
+            cv.destroyAllWindows()
+
+p = 0
+while p < len(all_sides) and (p + 1) < len(all_sides):
+    j = 0
+    while j < len(all_sides[p]):
+        for k in range(0, len(all_sides[p + 1])):
+            if compare_sides(all_sides[p][j], all_sides[p + 1][k]):
+                print(True)
+                print(f"{p}side{j} matches with {p + 1}side{k} ")
+            else:
+                print(False)        
+        j += 1       
+    p += 1
