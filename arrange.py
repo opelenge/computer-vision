@@ -1,5 +1,6 @@
 import cv2 as cv 
 import os
+import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as Patches
@@ -28,22 +29,18 @@ def draw_graph(point):
     plt.show()
 
 
-def find_corners(coords, n_corners_range=(4, 4), threshold=20):
+def find_corners(coords):
     hull = ConvexHull(coords)
     corners = hull.points[hull.vertices]
-    centroid = np.mean(corners, axis=0)
-    distances = np.linalg.norm(corners - centroid, axis=1)
-    sorted_indices = np.argsort(distances)[::-1]
-    unique_corners = []
-    for corner in corners[sorted_indices]:
-        if not any([np.linalg.norm(corner - uc) < threshold for uc in unique_corners]):
-            unique_corners.append(corner)
-        if len(unique_corners) >= n_corners_range[0]:
-            break
-    unique_corners = np.array(unique_corners[:n_corners_range[1]])
-    # Compute angle of each corner wrt centroid
-    angles = np.arctan2(unique_corners[:, 1] - centroid[1], unique_corners[:, 0] - centroid[0])
+    # Find the indices of the top-left, top-right, bottom-left, and bottom-right corners
+    tl_index = np.argmin(corners[:, 0] + corners[:, 1])
+    tr_index = np.argmin(-corners[:, 0] + corners[:, 1])
+    bl_index = np.argmin(corners[:, 0] - corners[:, 1])
+    br_index = np.argmin(-corners[:, 0] - corners[:, 1])
+    unique_corners = corners[[bl_index, tl_index, br_index, tr_index]]
+    centroid = np.mean(unique_corners, axis=0)
     # Sort the corners based on their angle
+    angles = np.arctan2(unique_corners[:, 1] - centroid[1], unique_corners[:, 0] - centroid[0])
     sorted_indices = np.argsort(angles)
     return unique_corners[sorted_indices]
 
@@ -132,19 +129,30 @@ def calculate_distance(points):
     distances = []
     x1, y1 = first_point
     x2, y2 = last_point
-    slope = (y2 - y1) / (x2 - x1) if x2 - x1 != 0 else float('inf')
-    intercept = y1 - slope * x1
-    for point in points:
-        x, y = point
-        # Calculate the equation of the perpendicular line
-        perp_slope = -1 / slope if slope != 0 else float('inf')
-        perp_intercept = y - perp_slope * x
-        # Calculate the intersection point of the two lines
-        inter_x = (perp_intercept - intercept) / (slope - perp_slope) if slope - perp_slope != 0 else x
-        inter_y = slope * inter_x + intercept
-        # Calculate the distance between the current point and the intersection point
-        distance = ((x - inter_x)**2 + (y - inter_y)**2)**0.5
-        distances.append(distance)
+    if x2 - x1 == 0: # vertical line
+        for point in points:
+            x, y = point
+            distance = abs(x - x1)
+            distances.append(distance)
+    elif y2 - y1 == 0: # horizontal line
+        for point in points:
+            x, y = point
+            distance = abs(y - y1)
+            distances.append(distance)
+    else: # non-vertical and non-horizontal line
+        slope = (y2 - y1) / (x2 - x1)
+        intercept = y1 - slope * x1
+        for point in points:
+            x, y = point
+            # Calculate the equation of the perpendicular line
+            perp_slope = -1 / slope
+            perp_intercept = y - perp_slope * x
+            # Calculate the intersection point of the two lines
+            inter_x = (perp_intercept - intercept) / (slope - perp_slope)
+            inter_y = slope * inter_x + intercept
+            # Calculate the distance between the current point and the intersection point
+            distance = ((x - inter_x)**2 + (y - inter_y)**2)**0.5
+            distances.append(distance)
     x_points = [x for x, y in points]
     y_points = [y for x, y in points]
     plt.scatter(x_points, y_points)
@@ -155,16 +163,23 @@ def calculate_distance(points):
     plt.plot(x_line, y_line)
     for point, distance in zip(points, distances):
         x, y = point
-        # Calculate the equation of the perpendicular line
-        perp_slope = -1 / slope if slope != 0 else float('inf')
-        perp_intercept = y - perp_slope * x
-        # Calculate the intersection point of the two lines
-        inter_x = (perp_intercept - intercept) / (slope - perp_slope) if slope - perp_slope != 0 else x
-        inter_y = slope * inter_x + intercept
+        if x2 - x1 == 0: # vertical line
+            inter_x = x1
+            inter_y = y
+        elif y2 - y1 == 0: # horizontal line
+            inter_x = x
+            inter_y = y1
+        else: # non-vertical and non-horizontal line
+            # Calculate the equation of the perpendicular line
+            perp_slope = -1 / slope
+            perp_intercept = y - perp_slope * x
+            # Calculate the intersection point of the two lines
+            inter_x = (perp_intercept - intercept) / (slope - perp_slope)
+            inter_y = slope * inter_x + intercept
         # Draw the perpendicular line and the distance
-        plt.plot([x, inter_x], [y, inter_y], 'k--')
-        plt.plot(inter_x, inter_y, 'ro')
-        plt.annotate(f"{distance:.2f}", (inter_x, inter_y), textcoords="offset points", xytext=(0,10), ha='center')  
+        #plt.plot([x, inter_x], [y, inter_y], 'k--')
+        #plt.plot(inter_x, inter_y, 'ro')
+        #plt.annotate(f"{distance:.2f}", (inter_x, inter_y), textcoords="offset points", xytext=(0,10), ha='center') 
     #plt.show()   
     t = 0    
     for i in distances: 
@@ -174,17 +189,27 @@ def calculate_distance(points):
     #print(len(distances))  
     return t  
 
+
 os.chdir("C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers")
-images = "C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers"
+images = ("C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers")
 k = len(os.listdir(images))
+all_files = glob.glob(os.path.join(images, "*"))
+
+# Extract the numeric part of the file names and convert them to integers
+numeric_names = [int(os.path.splitext(os.path.basename(file))[0]) for file in all_files]
+
+# Sort the list of files based on their numeric values
+sorted_files = [file for _, file in sorted(zip(numeric_names, all_files))]
+# Print the sorted list of files
+#print(sorted_files)
 i = 0
 all_sides = []
 ptu = []
 while i < k:
-    for image in os.listdir(images):
+    for image in sorted_files:
         if image.endswith(".jpg") or image.endswith(".png"):
             img = cv.imread(image)
-            img_resize = rescaleFrame(img, scale = .15)
+            img_resize = rescaleFrame(img, scale = .5)
 
             edge_pixel = []
             piece = []
@@ -255,7 +280,8 @@ while f < len(distance):
             for r, j in distance[i].items():
                 if compare_sides(v, j):
                     if r != k and r[0] != k[0]:
-                        list.append(r)
+                        if j != 0 and v != 0:
+                            list.append(r)
                 else:
                     continue
         if len(list) != 0:            
