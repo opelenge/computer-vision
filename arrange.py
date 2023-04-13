@@ -7,6 +7,9 @@ import matplotlib.patches as Patches
 import math
 from scipy.spatial import ConvexHull
 from scipy.spatial import distance
+import matplotlib.animation as animation
+from shapely.geometry import Point, LineString, Polygon
+
 
 #this function resizes the image
 def rescaleFrame(frame, scale = 0.75):
@@ -53,7 +56,7 @@ def get_side_properties(side):
 
 def compare_sides(dist1, dist2):
 
-    if abs(dist1 - dist2) <= 1:
+    if abs(dist1 - dist2) <= 10:
         return True
     else:
         return False
@@ -102,6 +105,7 @@ def split_polygon(corners, all_points):
     result[-1] = np.concatenate((result[-1], corners[0].reshape(1, -1)))               
     return result
 
+
 def label(sides, points):
     for p in range(0, len(sides)):
         fig, ax = plt.subplots()
@@ -111,83 +115,20 @@ def label(sides, points):
         #plt.savefig(f"{p} verts_sorted.jpg")        
     plt.show()       
 
-def draw_line(p1, p2, num_points=100):
-    x1, y1 = p1
-    x2, y2 = p2
-    line = []
-    for i in range(num_points + 1):
-        t = i / num_points
-        x = x1 + t * (x2 - x1)
-        y = y1 + t * (y2 - y1)
-        line.append((x, y))
-    return line      
-   
 
-def calculate_distance(points):
-    first_point = points[0]
-    last_point = points[-1]
-    distances = []
-    x1, y1 = first_point
-    x2, y2 = last_point
-    if x2 - x1 == 0: # vertical line
-        for point in points:
-            x, y = point
-            distance = abs(x - x1)
-            distances.append(distance)
-    elif y2 - y1 == 0: # horizontal line
-        for point in points:
-            x, y = point
-            distance = abs(y - y1)
-            distances.append(distance)
-    else: # non-vertical and non-horizontal line
-        slope = (y2 - y1) / (x2 - x1)
-        intercept = y1 - slope * x1
-        for point in points:
-            x, y = point
-            # Calculate the equation of the perpendicular line
-            perp_slope = -1 / slope
-            perp_intercept = y - perp_slope * x
-            # Calculate the intersection point of the two lines
-            inter_x = (perp_intercept - intercept) / (slope - perp_slope)
-            inter_y = slope * inter_x + intercept
-            # Calculate the distance between the current point and the intersection point
-            distance = ((x - inter_x)**2 + (y - inter_y)**2)**0.5
-            distances.append(distance)
-    x_points = [x for x, y in points]
-    y_points = [y for x, y in points]
-    plt.scatter(x_points, y_points)
-    # Draw the line segment
-    line = draw_line(first_point, last_point)
-    x_line = [x for x, y in line]
-    y_line = [y for x, y in line]
-    plt.plot(x_line, y_line)
-    for point, distance in zip(points, distances):
-        x, y = point
-        if x2 - x1 == 0: # vertical line
-            inter_x = x1
-            inter_y = y
-        elif y2 - y1 == 0: # horizontal line
-            inter_x = x
-            inter_y = y1
-        else: # non-vertical and non-horizontal line
-            # Calculate the equation of the perpendicular line
-            perp_slope = -1 / slope
-            perp_intercept = y - perp_slope * x
-            # Calculate the intersection point of the two lines
-            inter_x = (perp_intercept - intercept) / (slope - perp_slope)
-            inter_y = slope * inter_x + intercept
-        # Draw the perpendicular line and the distance
-        #plt.plot([x, inter_x], [y, inter_y], 'k--')
-        #plt.plot(inter_x, inter_y, 'ro')
-        #plt.annotate(f"{distance:.2f}", (inter_x, inter_y), textcoords="offset points", xytext=(0,10), ha='center') 
-    #plt.show()   
-    t = 0    
-    for i in distances: 
-        t += i
-    #print(t)    
-    #print(distances) 
-    #print(len(distances))  
-    return t  
+def calculate_distances(polygon_points):
+
+    # Define the two 2D points
+    start_point = polygon_points[0]
+    end_point = polygon_points[-1]
+    polygons = Polygon(polygon_points)
+    areas = polygons.area
+    #print(areas)
+    x, y = polygons.exterior.xy
+    plt.plot(x, y)
+    # Show the plot
+    #plt.show()
+    return areas
 
 
 os.chdir("C:/Users/OPE/Documents/Visual Studio 2008/computer vision/torn_papers")
@@ -209,7 +150,7 @@ while i < k:
     for image in sorted_files:
         if image.endswith(".jpg") or image.endswith(".png"):
             img = cv.imread(image)
-            img_resize = rescaleFrame(img, scale = .5)
+            img_resize = rescaleFrame(img, scale = .15)
 
             edge_pixel = []
             piece = []
@@ -264,12 +205,12 @@ while p < len(all_sides):
     distances = {}
     j = 0   
     while j < len(all_sides[p]):
-        length = calculate_distance(all_sides[p][j])  
+        length = calculate_distances(all_sides[p][j])  
         distances[f"{p}side{j}"] = length
         j += 1          
     p += 1
     distance.append(distances)
-#print(distance)
+print(distance)
 
 f = 0
 while f < len(distance):
@@ -279,13 +220,14 @@ while f < len(distance):
         for i in x:
             for r, j in distance[i].items():
                 if compare_sides(v, j):
-                    if r != k and r[0] != k[0]:
+                    if r != k:
                         if j != 0 and v != 0:
-                            list.append(r)
+                            if abs(int(r[-1]) - int(k[-1])) == 2:
+                                list.append(r)
                 else:
                     continue
         if len(list) != 0:            
-            print(f"{list} are potential matches to {k}")  
+            print(f"{list} are potential matches to {k}\n\n")  
     f += 1          
 
-label(all_sides, ptu)  
+#label(all_sides, ptu)  
